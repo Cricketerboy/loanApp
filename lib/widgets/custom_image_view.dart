@@ -1,0 +1,150 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+/// **Extension on String to determine image type**
+extension ImageTypeExtension on String {
+  ImageType get imageType {
+    if (startsWith('http') || startsWith('https')) {
+      return ImageType.network;
+    } else if (endsWith('.svg')) {
+      return ImageType.svg;
+    } else if (startsWith('file://')) {
+      return ImageType.file;
+    } else {
+      return ImageType.png;
+    }
+  }
+}
+
+/// **Enum to define image types**
+enum ImageType { svg, png, network, file, unknown }
+
+/// **Custom Image Widget to handle different image types**
+class CustomImageView extends StatelessWidget {
+  const CustomImageView({
+    Key? key,
+    required this.imagePath,
+    this.height,
+    this.width,
+    this.color,
+    this.fit,
+    this.alignment,
+    this.onTap,
+    this.radius,
+    this.margin,
+    this.border,
+    this.placeHolder = 'assets/images/image_not_found.jpg',
+  }) : super(key: key);
+
+  final String? imagePath;
+  final double? height;
+  final double? width;
+  final Color? color;
+  final BoxFit? fit;
+  final String placeHolder;
+  final Alignment? alignment;
+  final VoidCallback? onTap;
+  final EdgeInsetsGeometry? margin;
+  final BorderRadius? radius;
+  final BoxBorder? border;
+
+  @override
+  Widget build(BuildContext context) {
+    return alignment != null
+        ? Align(alignment: alignment!, child: _buildWidget())
+        : _buildWidget();
+  }
+
+  Widget _buildWidget() {
+    return Padding(
+      padding: margin ?? EdgeInsets.zero,
+      child: InkWell(
+        onTap: onTap,
+        child: _buildCircleImage(),
+      ),
+    );
+  }
+
+  /// **Build image with optional border radius**
+  Widget _buildCircleImage() {
+    return radius != null
+        ? ClipRRect(
+            borderRadius: radius!,
+            child: _buildImageWithBorder(),
+          )
+        : _buildImageWithBorder();
+  }
+
+  /// **Build image with optional border**
+  Widget _buildImageWithBorder() {
+    return border != null
+        ? Container(
+            decoration: BoxDecoration(
+              border: border,
+              borderRadius: radius,
+            ),
+            child: _buildImageView(),
+          )
+        : _buildImageView();
+  }
+
+  /// **Render different image types**
+  Widget _buildImageView() {
+    if (imagePath != null) {
+      switch (imagePath!.imageType) {
+        case ImageType.svg:
+          return SvgPicture.asset(
+            imagePath!,
+            height: height,
+            width: width,
+            fit: fit ?? BoxFit.contain,
+            colorFilter: color != null
+                ? ColorFilter.mode(color!, BlendMode.srcIn)
+                : null,
+          );
+        case ImageType.file:
+          return Image.file(
+            File(imagePath!),
+            height: height,
+            width: width,
+            fit: fit ?? BoxFit.cover,
+            color: color,
+          );
+        case ImageType.network:
+          return CachedNetworkImage(
+            height: height,
+            width: width,
+            fit: fit,
+            imageUrl: imagePath!,
+            color: color,
+            placeholder: (context, url) => SizedBox(
+              height: 30,
+              width: 30,
+              child: LinearProgressIndicator(
+                color: Colors.grey.shade200,
+                backgroundColor: Colors.grey.shade100,
+              ),
+            ),
+            errorWidget: (context, url, error) => Image.asset(
+              placeHolder,
+              height: height,
+              width: width,
+              fit: fit ?? BoxFit.cover,
+            ),
+          );
+        case ImageType.png:
+        default:
+          return Image.asset(
+            imagePath!,
+            height: height,
+            width: width,
+            fit: fit ?? BoxFit.cover,
+            color: color,
+          );
+      }
+    }
+    return const SizedBox();
+  }
+}

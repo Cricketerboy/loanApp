@@ -1,0 +1,130 @@
+import 'dart:ui' as ui;
+import 'package:flutter/material.dart';
+
+/// Constants for design dimensions based on Figma or your design tool
+const num FIGMA_DESIGN_WIDTH = 360;
+const num FIGMA_DESIGN_HEIGHT = 800;
+const num FIGMA_DESIGN_STATUS_BAR = 0;
+
+typedef ResponsiveBuild = Widget Function(
+  BuildContext context,
+  Orientation orientation,
+  DeviceType deviceType,
+);
+
+/// Sizer widget to initialize the screen size and orientation
+class Sizer extends StatelessWidget {
+  const Sizer({
+    Key? key,
+    required this.builder,
+  }) : super(key: key);
+
+  /// Builds the widget whenever the orientation or constraints change
+  final ResponsiveBuild builder;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return OrientationBuilder(
+          builder: (context, orientation) {
+            SizeUtils.setScreenSize(constraints, orientation);
+            return builder(context, orientation, SizeUtils.deviceType);
+          },
+        );
+      },
+    );
+  }
+}
+
+/// Utility class for responsive sizing
+class SizeUtils {
+  /// Device's BoxConstraints
+  static late BoxConstraints boxConstraints;
+
+  /// Device's Orientation
+  static late Orientation orientation;
+
+  /// Type of Device (mobile, tablet, desktop)
+  static late DeviceType deviceType;
+
+  /// Device's Height
+  static double height = 0.0;
+
+  /// Device's Width
+  static double width = 0.0;
+
+  /// Initializes screen size and orientation
+  static void setScreenSize(
+    BoxConstraints constraints,
+    Orientation currentOrientation,
+  ) {
+    // Sets BoxConstraints and Orientation
+    boxConstraints = constraints;
+    orientation = currentOrientation;
+
+    // Determine dimensions based on orientation
+    if (orientation == Orientation.portrait) {
+      width = constraints.maxWidth > 0 ? constraints.maxWidth : FIGMA_DESIGN_WIDTH.toDouble();
+      height = constraints.maxHeight > 0 ? constraints.maxHeight : FIGMA_DESIGN_HEIGHT.toDouble();
+    } else {
+      width = constraints.maxHeight > 0 ? constraints.maxHeight : FIGMA_DESIGN_WIDTH.toDouble();
+      height = constraints.maxWidth > 0 ? constraints.maxWidth : FIGMA_DESIGN_HEIGHT.toDouble();
+    }
+
+    // Set device type
+    deviceType = _getDeviceType(width);
+  }
+
+  /// Determines device type based on screen width
+  static DeviceType _getDeviceType(double width) {
+    if (width >= 1024) {
+      return DeviceType.desktop;
+    } else if (width >= 600) {
+      return DeviceType.tablet;
+    } else {
+      return DeviceType.mobile;
+    }
+  }
+}
+
+/// Extension for responsive sizing utilities
+extension ResponsiveExtension on num {
+  /// Screen width
+  double get _width => SizeUtils.width > 0 ? SizeUtils.width : FIGMA_DESIGN_WIDTH.toDouble();
+
+  /// Screen height
+  double get _height => SizeUtils.height > 0 ? SizeUtils.height : FIGMA_DESIGN_HEIGHT.toDouble();
+
+  /// Horizontal scaling based on screen width
+  double get h => (this * _width) / FIGMA_DESIGN_WIDTH;
+
+  /// Vertical scaling based on screen height
+  double get v => (this * _height) / (FIGMA_DESIGN_HEIGHT - FIGMA_DESIGN_STATUS_BAR);
+
+  /// Adaptive size for widgets, choosing the smaller dimension
+  double get adaptSize {
+    final height = v;
+    final width = h;
+    return height < width ? height : width;
+  }
+
+  /// Font size scaling
+  double get fSize => adaptSize;
+}
+
+/// Extension for double formatting and validation
+extension FormatExtension on double {
+  /// Returns a double value formatted to a specific number of decimal places
+  double toDoubleValue({int fractionDigits = 2}) {
+    return double.parse(toStringAsFixed(fractionDigits));
+  }
+
+  /// Returns the value if non-zero, otherwise returns a default value
+  double isNonZero({num defaultValue = 0.0}) {
+    return this > 0 ? this : defaultValue.toDouble();
+  }
+}
+
+/// Enum to represent device type
+enum DeviceType { mobile, tablet, desktop }
